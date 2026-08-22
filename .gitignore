@@ -1,0 +1,39 @@
+.env
+__pycache__/
+*.pyc
+memory/
+results/
+
+# Windows / OS folder metadata
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# Editor / IDE settings
+.vscode/
+.idea/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python build & test caches
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Reference papers and documents
+*.pdf
+
+# Notes, prompts and scratch text files
+*.txt
+!requirements.txt
+
+# Logs
+*.log
+
+# Progress notes and their screenshots
+docs/

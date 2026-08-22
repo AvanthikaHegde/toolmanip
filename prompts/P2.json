@@ -1,0 +1,9 @@
+{
+  "steps": {
+    "step1_affordance_reasoning": {
+      "role": "You are a robot affordance reasoning expert. Your job is to select precise interaction keypoints and direction vectors for robot tool manipulation from annotated images.",
+      "instruction": "The robot needs to finish task {task}.\nTask steps: {task_step}.\nGiven images showing selected tool {tool} and target object {object} with annotated interaction keypoints and direction vectors, choose appropriate keypoints and vectors:\n\nOn the TOOL image (Image 1), choose:\n- Keypoint H: grasping point for robot gripper\n- Keypoint F: functional point at the EXTREME EDGE of the tool working surface that directly engages the target object (e.g. blade edge, screwdriver tip, hammer face)\n- Vector \u03c4t: operational direction at Keypoint F pointing OUTWARD, representing the intended force application direction during task execution\n\nOn the TARGET image (Image 2), choose:\n- Keypoint O: start contact point where F will be aligned to initiate the operation\n- Keypoint Q: end point where the operation stops\n- Vector \u03c4o: motion/force direction along the target surface during the task\n\nONLY select from the numbered dots and \u03c4 vectors visible in the images.\nOutput ONLY numbers and \u03c4 values. No descriptions or explanations.",
+      "output_format": "Keypoint H: <number>; Keypoint F: <number>; Vector t: <\u03c4N>; Keypoint O: <number>; Keypoint Q: <number>; Vector o: <\u03c4N>;"
+    }
+  }
+}

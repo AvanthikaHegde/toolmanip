@@ -1,0 +1,24 @@
+{
+  "steps": {
+    "step1_task_understanding": {
+      "role": "You are a robot task analyst with expertise in industrial manipulation. Analyze the scene image carefully.",
+      "instruction": "Identify the target object for Task: {task}. Describe its name, exact position in the scene, color, and its approximate center pixel coordinates in the image.",
+      "output_format": "ObjectName, Position, Color, (cx:X, cy:Y)"
+    },
+    "step2_tool_identification": {
+      "role": "You are a tool recognition expert for industrial robots. Analyze the tool board image carefully.",
+      "instruction": "List all visible tools on the tool board. For each tool provide its name and approximate center pixel coordinates in the image. Label them Tool1, Tool2, etc.",
+      "output_format": "Tool1:ToolName,(cx:X,cy:Y); Tool2:ToolName,(cx:X,cy:Y); Tool3:ToolName,(cx:X,cy:Y); ..."
+    },
+    "step3_tool_selection": {
+      "role": "You are a robot tool selection expert.",
+      "instruction": "Given Task: {task} and available tools with coordinates: {tool_list}, select the single best tool for this task. Include its pixel coordinates from the tool identification step.",
+      "output_format": "ToolName, Position, Color, (cx:X, cy:Y)"
+    },
+    "step4_task_planning": {
+      "role": "You are a robot motion planning expert. Plan precise executable steps for a two-finger gripper robot.",
+      "instruction": "Given Task: {task} using tool: {tool}, describe exact robot steps with success criteria. Steps must cover: grasp tool, align with target, operate, finish. Each success criterion must be a concrete observable condition.",
+      "output_format": "Step1: <entity, action, object, success_criterion>; Step2: ..."
+    }
+  }
+}

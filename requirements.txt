@@ -1,0 +1,9 @@
+openai>=1.52.0
+python-dotenv==1.0.1
+pathlib2==2.3.7
+opencv-python>=4.8.0
+scipy>=1.11.0
+Pillow>=10.0.0
+scikit-image>=0.21.0
+# lang-sam: install manually with:
+# pip install git+https://github.com/luca-medeiros/lang-segment-anything.git
