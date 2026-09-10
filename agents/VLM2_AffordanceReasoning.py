@@ -39,8 +39,14 @@ from structures.affordance_structures import (
 # Image constants
 # ---------------------------------------------------------------------------
 
-TOOL_IMAGE  = "examples/tool_board.png"
-SCENE_IMAGE = "examples/scene.png"
+TOOL_IMAGE  = "examples/tool_board_clean.png"
+SCENE_IMAGE = "examples/putty_scene.png"
+
+# Shortest O→Q the resolver will accept, as a fraction of the target image's
+# smaller side. Below this the operation vector describes a span so small that
+# operation_distance_px and operation_vector are dominated by keypoint
+# quantisation rather than by the VLM's intent.
+MIN_OPERATION_SPAN_FRACTION = 0.10
 
 # ---------------------------------------------------------------------------
 # Memory helpers
@@ -349,11 +355,55 @@ def resolve_to_coordinates(
     tt = tau_to_degrees(keypoint_result.tool_direction,    direction_angles, "τt (tool direction)")
     to_ = tau_to_degrees(keypoint_result.target_direction, direction_angles, "τo (target direction)")
 
-    if O is not None and Q is not None and (O.u, O.v) == (Q.u, Q.v):
-        problems.append(
-            f"O and Q both resolve to pixel ({O.u}, {O.v}) — the operation "
-            f"vector is undefined with zero length"
-        )
+    # --- Geometric sanity of the operation vector -------------------------
+    #
+    # A label-valid selection can still be physically meaningless. Run
+    # d120178b chose O=11, Q=13 — two adjacent perimeter keypoints 22.5px
+    # apart in a 512px crop, half of them on the plate rather than the putty.
+    # Every label was in range, so nothing objected, and a complete-looking
+    # affordance JSON was written describing a 22px "scrape".
+    #
+    # Both checks below can be waived with ALLOW_DEGENERATE_AFFORDANCE=1, in
+    # the same spirit as ALLOW_HRE_FALLBACK. The legitimate case is a
+    # point-like operation — hammering a nail, seating a bolt — where O and Q
+    # coincide by design and τo alone carries the direction.
+    _waived = os.environ.get(
+        "ALLOW_DEGENERATE_AFFORDANCE", "").strip().lower() in {"1", "true", "yes"}
+
+    if O is not None and Q is not None and not _waived:
+        span = math.dist((O.u, O.v), (Q.u, Q.v))
+        floor = MIN_OPERATION_SPAN_FRACTION * min(*target_image_size)
+        if span == 0:
+            problems.append(
+                f"O and Q both resolve to pixel ({O.u}, {O.v}) — the operation "
+                f"vector is undefined with zero length"
+            )
+        elif span < floor:
+            problems.append(
+                f"O ({O.u}, {O.v}) and Q ({Q.u}, {Q.v}) are only {span:.1f}px "
+                f"apart, under the {floor:.1f}px floor "
+                f"({MIN_OPERATION_SPAN_FRACTION:.0%} of the "
+                f"{min(*target_image_size)}px image side). The operation vector "
+                f"spans almost none of the target, so any distance derived from "
+                f"it is noise. Set ALLOW_DEGENERATE_AFFORDANCE=1 if this task "
+                f"really is a point operation."
+            )
+        elif to_ is not None:
+            # τo is the motion direction along the target surface, so it should
+            # agree with the direction O->Q actually points. The VLM picks from
+            # `direction_angles`, and the nearest of those to any true heading is
+            # at most (360/n)/2 away — so a deviation beyond a full 360/n step
+            # means it chose a direction its own two points contradict.
+            span_deg = math.degrees(math.atan2(Q.v - O.v, Q.u - O.u)) % 360
+            step = 360.0 / len(direction_angles)
+            delta = abs((span_deg - to_ + 180) % 360 - 180)
+            if delta > step:
+                problems.append(
+                    f"τo is {to_:.1f}° but O→Q points {span_deg:.1f}° "
+                    f"({delta:.1f}° apart, over the {step:.1f}° tolerance). The "
+                    f"chosen direction disagrees with the two points chosen to "
+                    f"define it; one of the three is wrong."
+                )
 
     if problems:
         raise AffordanceResolutionError(

@@ -18,8 +18,8 @@ load_dotenv()
 from utils import run_vlm_dialog, parse_task_plan, save_memory_record, save_task_plan
 from structures.task_structures import TaskPlan, ObjectProperties, ToolProperties, TaskStep
 
-TOOL_IMAGE  = "examples/tool_board.png"
-SCENE_IMAGE = "examples/scene.png"
+TOOL_IMAGE  = "examples/tool_board_clean.png"
+SCENE_IMAGE = "examples/putty_scene.png"
 
 print(f"[Module I] Using tool image: {TOOL_IMAGE}")
 print(f"[Module I] Using scene image: {SCENE_IMAGE}")

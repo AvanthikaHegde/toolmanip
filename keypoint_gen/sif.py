@@ -73,10 +73,71 @@ _FONT = cv2.FONT_HERSHEY_SIMPLEX if _CV2_AVAILABLE else None
 _FONT_SCALE = 0.45
 _FONT_THICKNESS = 1
 
+# Minimum gap between two keypoints, in pixels. Two markers closer than
+# 2 * _DOT_RADIUS overlap outright, and the direction arrows radiate a further
+# 20px, so anything under ~15px produces the unreadable knot of overlapping
+# dots and τ labels seen in run ed3c5129 (keypoints 1, 6 and 10 all landed
+# within 2px of each other at the putty's top corner).
+#
+# This also protects the Table 4 metric: three labels on one site means three
+# different answers are all "correct", and Keypoint Match Rate stops being
+# well-defined.
+_MIN_KEYPOINT_SEPARATION = 2 * _DOT_RADIUS + 3
+
+# Candidates drawn per requested point before separation filtering. Without
+# oversampling, discarding a crowded candidate would return fewer keypoints
+# than requested — which would silently corrupt Table 4, where the keypoint
+# count is the swept variable.
+_OVERSAMPLE = 4
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
+def _select_separated(candidates: List[Tuple[int, int]],
+                      n: int,
+                      accepted: List[Tuple[int, int]],
+                      min_dist: int = _MIN_KEYPOINT_SEPARATION
+                      ) -> List[Tuple[int, int]]:
+    """
+    Take `n` candidates that sit at least `min_dist` pixels from each other and
+    from every point already in `accepted`, appending each pick to `accepted`.
+
+    Replaces the previous exact-coordinate deduplication, which compared
+    (int(x), int(y)) tuples and therefore treated (195,37), (196,37) and
+    (197,37) as three distinct keypoints.
+
+    Two passes, and the second one matters. Candidates arrive ordered along the
+    structure they were sampled from — the skeleton runs end to end, the contour
+    runs around the perimeter — so taking the first n that pass separation
+    collapses every pick onto one end of the object. Filtering first and then
+    sampling evenly across the survivors keeps the spread the caller asked for.
+
+    `accepted` is mutated so separation holds *across* categories as well as
+    within them: a contour point may not land on top of an axis point.
+    """
+    threshold = min_dist * min_dist
+
+    kept: List[Tuple[int, int]] = []
+    for p in candidates:
+        x, y = int(p[0]), int(p[1])
+        far_enough = all((x - ax) ** 2 + (y - ay) ** 2 >= threshold
+                         for ax, ay in accepted)
+        if far_enough and all((x - kx) ** 2 + (y - ky) ** 2 >= threshold
+                              for kx, ky in kept):
+            kept.append((x, y))
+
+    if len(kept) <= n:
+        picked = kept
+    else:
+        # Evenly spaced along the survivors, endpoints included.
+        idx = np.linspace(0, len(kept) - 1, n).astype(int)
+        picked = [kept[i] for i in dict.fromkeys(idx.tolist())]
+
+    accepted.extend(picked)
+    return picked
+
 
 def _extract_skeleton_points(mask: np.ndarray, n: int) -> List[Tuple[int, int]]:
     """
@@ -298,17 +359,38 @@ def generate_sif(
         h, w = img.shape[:2]
 
         # --- Keypoint placement ---
-        axis_pts = _extract_skeleton_points(mask, n_axis_points)
-        contour_pts = _extract_contour_points(mask, n_contour_points)
-        bg_pts = _background_points(mask, n_background_points, h, w)
+        #
+        # Each extractor is oversampled, then filtered down to the requested
+        # count with a minimum-separation rule. The skeleton endpoint, a
+        # Douglas-Peucker corner and an evenly-spaced contour sample routinely
+        # converge on the same corner of an object, so sampling exactly n from
+        # each category and deduplicating on exact coordinates leaves several
+        # labels stacked on one site.
+        axis_cand = _extract_skeleton_points(mask, n_axis_points * _OVERSAMPLE)
+        contour_cand = _extract_contour_points(mask, n_contour_points * _OVERSAMPLE)
+        bg_cand = _background_points(mask, n_background_points * _OVERSAMPLE, h, w)
 
-        all_keypoints: List[Tuple[int, int]] = []
-        seen: set = set()
-        for pt in axis_pts + contour_pts + bg_pts:
-            key = (int(pt[0]), int(pt[1]))
-            if key not in seen:
-                seen.add(key)
-                all_keypoints.append(key)
+        accepted: List[Tuple[int, int]] = []
+        axis_pts = _select_separated(axis_cand, n_axis_points, accepted)
+        contour_pts = _select_separated(contour_cand, n_contour_points, accepted)
+        bg_pts = _select_separated(bg_cand, n_background_points, accepted)
+
+        all_keypoints: List[Tuple[int, int]] = axis_pts + contour_pts + bg_pts
+
+        requested = n_axis_points + n_contour_points + n_background_points
+        if len(all_keypoints) < requested:
+            warnings.warn(
+                f"[SIF] {label}: {len(all_keypoints)} keypoints placed but "
+                f"{requested} requested "
+                f"(axis {len(axis_pts)}/{n_axis_points}, "
+                f"contour {len(contour_pts)}/{n_contour_points}, "
+                f"background {len(bg_pts)}/{n_background_points}). The mask is "
+                f"too small to hold that many points "
+                f"{_MIN_KEYPOINT_SEPARATION}px apart. Any keypoint-count sweep "
+                f"is measuring the wrong count for this image.",
+                RuntimeWarning,
+                stacklevel=2
+            )
 
         # --- Annotate image ---
         annotated = _draw_keypoints(img, all_keypoints, start_index=1)

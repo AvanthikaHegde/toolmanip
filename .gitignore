@@ -35,5 +35,8 @@ dist/
 # Logs
 *.log
 
+# Editor and manual backups
+*.bak
+
 # Progress notes and their screenshots
 docs/
