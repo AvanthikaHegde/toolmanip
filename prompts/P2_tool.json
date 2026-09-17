@@ -1,0 +1,10 @@
+{
+  "_comment": "Module II for a single-camera rig: tool-side affordance only. The paper's full selection is {H, F, O, Q, tau_t, tau_o}; O, Q and tau_o describe the operation on the TARGET and need a scene camera, so only {H, F, tau_t} are requested here. Placeholders ARE substituted by agents/module2.py.",
+  "steps": {
+    "step1_tool_affordance": {
+      "role": "You are a robot affordance reasoning expert. You select precise interaction keypoints on tools for a 6-DOF arm with a two-finger parallel gripper.",
+      "instruction": "The robot must carry out the task: {task}\nPlanned steps: {task_steps}\nThe selected tool is: {tool}\n\nThe image shows the tool with candidate keypoints drawn as numbered dots (1 to {n_keypoints}) and candidate direction vectors drawn as arrows labelled tau0 to tau{max_tau}.\n\nChoose:\n- Keypoint H: the GRASP point, where the two-finger gripper should close on the tool. It must lie on the handle, at a place where the gripper can close around the shaft without fouling the working head.\n- Keypoint F: the FUNCTIONAL point, on the part of the tool that contacts the workpiece. For a striking tool this is the face of the head; for an edged tool the cutting edge; for a driver the tip.\n- Vector tau_t: the direction in which force is applied at F during the task, pointing outward from the tool.\n\nChoose ONLY from the numbered dots and tau labels actually drawn in the image. H and F must be different numbers.",
+      "output_format": "Keypoint H: <number>\nKeypoint F: <number>\nVector t: tau<number>"
+    }
+  }
+}

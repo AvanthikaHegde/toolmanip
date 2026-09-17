@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 memory/
 results/
+captures/
 
 # Windows / OS folder metadata
 desktop.ini

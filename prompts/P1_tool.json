@@ -1,0 +1,25 @@
+{
+  "_comment": "Module I for a single-camera rig: one depth camera faces the tool board, there is no scene camera. Step 1 therefore reads the target object from the operator's text description instead of a scene image; steps 2-4 are unchanged in intent from P1.json. Placeholders in braces ARE substituted by agents/module1.py, unlike the P1 path through utils.run_vlm_dialog.",
+  "steps": {
+    "step1_task_understanding": {
+      "role": "You are a robot task analyst with expertise in industrial manipulation.",
+      "instruction": "Task: {task}\n\nNo image of the workspace is available — reason from the description alone.\n\nIdentify the TARGET OBJECT that the task acts upon: the thing being worked on, not the tool used to work on it. Give its name, where it would typically be located for this task, and its likely colour or material appearance.\n\nIf the description does not determine a property, state the most typical case for this task rather than inventing specifics.",
+      "output_format": "NAME: <target object>\nPOSITION: <where it is, in words>\nCOLOUR: <colour or material>"
+    },
+    "step2_tool_identification": {
+      "role": "You are a tool recognition expert for industrial robots. You are looking at a photograph of a tool board.",
+      "instruction": "The image is {width} pixels wide and {height} pixels tall, origin top-left.\n\nList every distinct hand tool visible on the board. For each give a specific name (e.g. 'ball-peen hammer', not 'hammer'), its dominant colour, and where it sits on the board in words (e.g. 'second from the top, lying horizontally').\n\nThese descriptions are used as detection prompts by a downstream segmentation model, so make each one specific enough to distinguish that tool from the others present. Do not list the board or background.",
+      "output_format": "One tool per line, no other text:\nTool<N>: <name> | <colour> | <position in words>"
+    },
+    "step3_tool_selection": {
+      "role": "You are a robot tool selection expert reasoning about industrial manipulation.",
+      "instruction": "Task: {task}\nTarget object: {target}\n\nTools available on the board:\n{tool_list}\n\nSelect the SINGLE most appropriate tool to accomplish this task. Consider what physical action the task requires and which tool affords it. State in one sentence why that tool and not the others.\n\nCopy the chosen tool's name, colour and position exactly as listed above.",
+      "output_format": "SELECTED: Tool<N>\nNAME: <name>\nCOLOUR: <colour>\nPOSITION: <position in words>\nREASON: <one sentence>"
+    },
+    "step4_task_planning": {
+      "role": "You are a robot motion planning expert. You plan for a 6-DOF arm with a two-finger parallel gripper and a wrist force/torque sensor.",
+      "instruction": "Task: {task}\nTarget object: {target}\nSelected tool: {tool}\n\nPlan the ordered robot steps to carry out this task. The sequence must cover: grasping the tool, aligning it with the target, performing the operation, and finishing.\n\nEach step is a tuple of: the entity performing it, the action, the object acted on, and a success criterion. Every success criterion must be a concrete condition that could be checked by a camera or the force sensor — not a subjective judgement.",
+      "output_format": "One step per line, no other text:\nStep<N>: <entity>, <action>, <object>, <success criterion>"
+    }
+  }
+}
