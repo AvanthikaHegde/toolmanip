@@ -1,4 +1,4 @@
-   A zero-shot robot tool manipulation pipeline for industrial settings, built on
+ WIP- A zero-shot robot tool manipulation pipeline for industrial settings, built on
   vision-language models. Given a photo of a workbench and a board of available
   tools, the system decides what the task requires, picks the right tool, and works
   out exactly where to grip it and how to move it — without task-specific training
